@@ -1,0 +1,349 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>アンケート振り分け</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #f3f6fb;
+      font-family: sans-serif;
+      color: #333;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 440px;
+      padding: 30px 24px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    h1 {
+      margin-top: 0;
+      text-align: center;
+      font-size: 25px;
+    }
+
+    .description {
+      line-height: 1.8;
+      font-size: 15px;
+    }
+
+    label {
+      display: block;
+      margin-top: 24px;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 20px;
+      text-align: center;
+      letter-spacing: 4px;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 18px;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      background: #2463eb;
+      color: white;
+      font-size: 17px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #174fc5;
+    }
+
+    .message {
+      margin-top: 18px;
+      padding: 14px;
+      border-radius: 8px;
+      line-height: 1.7;
+      overflow-wrap: anywhere;
+    }
+
+    .error {
+      background: #fff0f0;
+      color: #b00020;
+    }
+
+    .success {
+      background: #eef7ee;
+      color: #205c2b;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .note {
+      margin-top: 22px;
+      color: #666;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="container">
+
+    <h1>アンケートのご案内</h1>
+
+    <p class="description">
+      アンケートへのご協力ありがとうございます。<br>
+      2桁の番号を入力し、
+      「アンケートに進む」を押してください。
+    </p>
+
+    <form id="surveyForm">
+      <label for="participantCode">（2桁）</label>
+
+      <input
+        type="text"
+        id="participantCode"
+        inputmode="numeric"
+        pattern="[0-9]{2}"
+        maxlength="2"
+        placeholder="例：03"
+        autocomplete="off"
+        required
+      >
+
+      <button type="submit">アンケートに進む</button>
+    </form>
+
+    <div id="message" class="message hidden" role="status"></div>
+
+    <p class="note">
+      ※ 2桁の番号を入力してください。
+    </p>
+
+  </main>
+
+  <script>
+    /*
+     * ==========================================
+     * 回答数の設定
+     * ==========================================
+     *
+     * Googleフォームの回答数を確認し、
+     * 以下の数字を手作業で更新してください。
+     *
+     * 例：
+     * パターン1が3件、パターン2が5件の場合
+     * 先頭を [3, 5, ...] にします。
+     *
+     * 回答数が5件以上のフォームはスキップします。
+     */
+
+    const responseCounts = [
+      0,  // パターン1
+      5,  // パターン2
+      0,  // パターン3
+      5,  // パターン4
+      0,  // パターン5
+      5,  // パターン6
+      5,  // パターン7
+      0,  // パターン8
+      5,  // パターン9
+      0,  // パターン10
+      0,  // パターン11
+      0,  // パターン12
+      0,  // パターン13
+      0,  // パターン14
+      0,  // パターン15
+      5,  // パターン16
+      0,  // パターン17
+      0,  // パターン18
+      0,  // パターン19
+      0   // パターン20
+    ];
+
+    /*
+     * ==========================================
+     * 20種類のGoogleフォーム
+     * ExcelファイルのURLシートから設定
+     * ==========================================
+     */
+
+    const surveys = [
+      {
+        name: "パターン1",
+        url: "https://docs.google.com/forms/d/e/1FAIpQLScOsTc6WS41EDJ3aG_FFUxQ_xodHJNauxyt8I8nsnNW3LwxaQ/viewform"
+      },
+      {
+        name: "パターン2",
+        url: "https://docs.google.com/forms/d/e/1FAIpQLSdqJpbZF21QFe3L7dXevQmj5wZ1COXGxoFsTpwCX9CWachxtQ/viewform"
+      },
+      {
+        name: "パターン3",
+        url: "https://docs.google.com/forms/d/e/1FAIpQLScVrcR9AIhVcyyVxCtkROnxG9NNvr9NMxN_s0J0zuYNDsaxbg/viewform"
+      },
+      {
+        name: "パターン4",
+        url: "https://docs.google.com/forms/d/e/1FAIpQLSc4076YhbKuWPOYCOgYI1SSUxsjxbeUU3K1eyMLLWAlJdD1hQ/viewform"
+      },
+      {
+        name: "パターン5",
+        url: "https://docs.google.com/forms/d/e/1FAIpQLSe3HMuC5iWX-ZbNzo4quw4_wsNiqzgeMz0-1R1rHIard-Z2Vw/viewform"
+      },
+      {
+        name: "パターン6",
+        url: "https://docs.google.com/forms/d/e/1FAIpQLSfmkIEWmIKx85oCQnn_rkHaB-jEsieMvpQzCiwXBNnr0vip2w/viewform"
+      },
+      {
+        name: "パターン7",
+        url: "https://docs.google.com/forms/d/e/1FAIpQLSdcoDcJeBA0gvyIquVWvjqUGVCrwf2YZ5h3ltypG5yhcg8t3A/viewform"
+      },
+      {
+        name: "パターン8",
+        url: "https://docs.google.com/forms/d/e/1FAIpQLScsW6YS8jw1xnFwJJT8WzSNgpY4hYkbvyEWG1AftT5i3pbZ4Q/viewform"
+      },
+      {
+        name: "パターン9",
+        url: "https://docs.google.com/forms/d/e/1FAIpQLSdZxmMqLpUqSbDFijTkIIqrneJr_YQBBffednm0YEV2dhuQgA/viewform"
+      },
+      {
+        name: "パターン10",
+        url: "https://docs.google.com/forms/d/e/1FAIpQLSd9M2yxlmwtg0kV8Gf_bcAGAathR5EofVknsQ05Vz_5mp1S_g/viewform"
+      },
+      {
+        name: "パターン11",
+        url: "https://docs.google.com/forms/d/e/1FAIpQLScMbKKQk9PS9StkRAvERhDN0nG1p4EfwjSEY5fQYsYWRzjgxw/viewform"
+      },
+      {
+        name: "パターン12",
+        url: "https://docs.google.com/forms/d/e/1FAIpQLSf1jHqA2NszeHoj-kyx8D5vmJw9npacj4SphTr3Evvmg2kjYw/viewform"
+      },
+      {
+        name: "パターン13",
+        url: "https://docs.google.com/forms/d/e/1FAIpQLSfIMBr_6rhvP4i8nGrjJYs_kQTkZ6mHLPUFZTuqCTbd2zBBvQ/viewform"
+      },
+      {
+        name: "パターン14",
+        url: "https://docs.google.com/forms/d/e/1FAIpQLSdzEwa1IKWEUwn6vFx6UhSMcFMZYNEKEhjngcHh6ULtgUn9nQ/viewform"
+      },
+      {
+        name: "パターン15",
+        url: "https://docs.google.com/forms/d/e/1FAIpQLSfLd-b5zHrb_k3wYoFHZgX9vOxnBNJwxzqriTDQzzCpGR6i9w/viewform"
+      },
+      {
+        name: "パターン16",
+        url: "https://docs.google.com/forms/d/e/1FAIpQLSevNYxRDngaJr4LaTjYCI5pZd43PVD1wbxRNp8ldA3b-YbdAA/viewform"
+      },
+      {
+        name: "パターン17",
+        url: "https://docs.google.com/forms/d/e/1FAIpQLSfE78LViDIbUNKrm2Ad4oBvoM_RPqksegU9JZ-l77ZEQxH7Vg/viewform"
+      },
+      {
+        name: "パターン18",
+        url: "https://docs.google.com/forms/d/e/1FAIpQLSf7aj4eZxRnCaAVsxgAsoJYRWa9hiurNsbTKbX22_hZ-T9Fqg/viewform"
+      },
+      {
+        name: "パターン19",
+        url: "https://docs.google.com/forms/d/e/1FAIpQLSeN-alPNrrm5zCdi6q7w8LYNj-8EYzICbzkaKXX9UOXyDnoVA/viewform"
+      },
+      {
+        name: "パターン20",
+        url: "https://docs.google.com/forms/d/e/1FAIpQLScji4jR3JOD816qmMQz3SbeDZx5XBQ1bOLzqO-9WXLyk4qh1A/viewform"
+      }
+    ];
+
+    /*
+     * ==========================================
+     * 振り分け処理
+     * ==========================================
+     *
+     * 00 → パターン1から確認
+     * 01 → パターン2から確認
+     * 02 → パターン3から確認
+     * ...
+     * 19 → パターン20から確認
+     *
+     * 20以降は同じ規則で繰り返します。
+     *
+     * 最初の候補から順番に確認し、
+     * 回答数が5件未満のフォームに移動します。
+     */
+
+    const form = document.getElementById("surveyForm");
+    const codeInput = document.getElementById("participantCode");
+    const message = document.getElementById("message");
+
+    form.addEventListener("submit", function(event) {
+      event.preventDefault();
+
+      const code = codeInput.value.trim();
+
+      // 2桁の数字か確認
+      if (!/^\d{2}$/.test(code)) {
+        showMessage(
+          "2桁の数字を入力してください。例：00、01、12",
+          "error"
+        );
+        return;
+      }
+
+      const participantNumber = Number(code);
+
+      // 00→1、01→2、02→3 ... 19→20
+      const startIndex = participantNumber % 20;
+
+      // 開始位置から20種類を順番に確認
+      for (let offset = 0; offset < surveys.length; offset++) {
+        const index = (startIndex + offset) % surveys.length;
+
+        // 回答数が5件未満なら、そのフォームへ案内
+        if (responseCounts[index] < 5) {
+          const selectedSurvey = surveys[index];
+
+          showMessage(
+            selectedSurvey.name + " のアンケートに移動します。",
+            "success"
+          );
+
+          // Googleフォームを新しい画面で開く
+          window.location.href = selectedSurvey.url;
+          return;
+        }
+      }
+
+      // すべてのフォームが5件以上の場合
+      showMessage(
+        "現在、回答を受け付けられるアンケートがありません。時間をおいて再度ご確認ください。",
+        "error"
+      );
+    });
+
+    function showMessage(text, type) {
+      message.textContent = text;
+      message.className = "message " + type;
+    }
+  </script>
+</body>
+</html>
